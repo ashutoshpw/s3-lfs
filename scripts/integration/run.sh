@@ -114,9 +114,11 @@ if [ "$USE_MINIO" -eq 1 ]; then
      exit 1
    fi
 
+   # Default compression is "none", so initial uploads should not be compressed.
    ZSTD_COUNT=$(mcli ls "$S3_ALIAS/$S3_BUCKET/$ROOT_PATH/" | grep -c '\.zstd$' || true)
-   if [ "$ZSTD_COUNT" -ne "3" ]; then
-     echo "Unexpected number of zstd files."
+   GZ_COUNT=$(mcli ls "$S3_ALIAS/$S3_BUCKET/$ROOT_PATH/" | grep -c '\.gz$' || true)
+   if [ "$ZSTD_COUNT" -ne "0" ] || [ "$GZ_COUNT" -ne "0" ]; then
+     echo "Unexpected compressed files for default compression=none."
      exit 1
    fi
 fi
