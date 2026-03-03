@@ -1,8 +1,8 @@
 # Local built binaries
-s3-lfs
-s3-lfs.exe
-izs3-lfs
-izs3-lfs.exe
+/s3-lfs
+/s3-lfs.exe
+/izs3-lfs
+/izs3-lfs.exe
 
 # Rust build artifacts
 packages/cli-rs/target/
@@ -19,3 +19,9 @@ bun.lock
 
 # Local build output
 bin/**
+
+# Integration/local test binaries
+/packages/cli/test/s3-lfs
+/packages/cli/test/s3-lfs.exe
+/scripts/integration/s3-lfs
+/scripts/integration/s3-lfs.exe
