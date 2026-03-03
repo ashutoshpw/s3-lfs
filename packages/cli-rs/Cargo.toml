@@ -1,0 +1,32 @@
+[package]
+name = "s3-lfs-rs"
+version = "0.1.0"
+edition = "2021"
+description = "Rust implementation of the s3-lfs CLI"
+license = "MIT"
+
+[[bin]]
+name = "s3-lfs"
+path = "src/main.rs"
+
+[dependencies]
+anyhow = "1.0"
+aws-config = { version = "1.8", default-features = false, features = ["default-https-client", "rt-tokio", "credentials-process", "behavior-version-latest"] }
+aws-credential-types = "1.2"
+aws-sdk-s3 = { version = "1.115", default-features = false, features = ["default-https-client", "rt-tokio", "rustls", "http-1x", "behavior-version-latest"] }
+base64 = "0.22"
+clap = { version = "4.5", features = ["derive"] }
+crc32c = "0.6"
+flate2 = "1.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tempfile = "3.13"
+tokio = { version = "1.48", features = ["rt", "io-util"] }
+zstd = "0.13"
+
+[profile.release]
+opt-level = "z"
+lto = true
+codegen-units = 1
+panic = "abort"
+strip = "symbols"

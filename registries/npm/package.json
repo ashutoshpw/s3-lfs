@@ -1,0 +1,29 @@
+{
+  "name": "s3-lfs",
+  "version": "0.0.0",
+  "description": "npm wrapper for the s3-lfs executable",
+  "license": "MIT",
+  "type": "commonjs",
+  "bin": {
+    "s3-lfs": "./bin/s3-lfs.js"
+  },
+  "files": [
+    "bin/",
+    "scripts/",
+    "vendor/",
+    "README.md"
+  ],
+  "scripts": {
+    "postinstall": "node ./scripts/postinstall.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ashutoshpw/s3-lfs.git",
+    "directory": "registries/npm"
+  },
+  "keywords": [
+    "git-lfs",
+    "lfs",
+    "s3"
+  ]
+}

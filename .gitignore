@@ -1,0 +1,21 @@
+# Local built binaries
+s3-lfs
+s3-lfs.exe
+izs3-lfs
+izs3-lfs.exe
+
+# Rust build artifacts
+packages/cli-rs/target/
+
+# Node dependencies
+node_modules/
+
+# Lock files (we're not using Node for deployment)
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+bun.lockb
+bun.lock
+
+# Local build output
+bin/**

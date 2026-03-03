@@ -1,0 +1,6 @@
+pre-commit:
+  commands:
+    check-file-size:
+      glob: "*.rs"
+      run: scripts/hooks/check-file-size.sh {staged_files}
+      fail_text: "Please refactor the code into smaller components under 500 LOC for long term maintainability"
