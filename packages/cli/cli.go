@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/ashutoshpw/s3-lfs/packages/cli/compression"
@@ -282,22 +283,41 @@ func runSetup(args []string) error {
 	parsed := runtimeFlags{Compression: defaultCompression, DeleteOtherVersions: true}
 	fs := newRuntimeFlagSet("setup", &parsed)
 	if err := fs.Parse(args); err != nil {
+		if errors.Is(err, flag.ErrHelp) {
+			out := fs.Output()
+			fmt.Fprintln(out)
+			fmt.Fprintln(out, "Setup is interactive. If --profile is omitted, you can select an existing profile to edit or add a new profile.")
+		}
 		return err
 	}
 	if len(fs.Args()) > 0 {
 		return fmt.Errorf("unexpected positional arguments: %s", strings.Join(fs.Args(), " "))
 	}
-	if parsed.Profile == "" {
-		return errors.New("--profile is required")
+	reader := bufio.NewReader(os.Stdin)
+	stdinInfo, err := os.Stdin.Stat()
+	if err != nil {
+		return err
 	}
-	if err := profiles.ValidateSlug(parsed.Profile); err != nil {
+	isTTY := stdinInfo.Mode()&os.ModeCharDevice != 0
+
+	selectedProfile := parsed.Profile
+	if selectedProfile == "" {
+		if !isTTY {
+			return errors.New("--profile is required when stdin is not a terminal")
+		}
+		selectedProfile, err = selectProfileForSetup(reader, os.Stdout)
+		if err != nil {
+			return err
+		}
+	}
+	if err := profiles.ValidateSlug(selectedProfile); err != nil {
 		return err
 	}
 
 	visited := visitedFlagNames(fs)
 
-	current := runtimeFlags{Profile: parsed.Profile, Compression: defaultCompression, DeleteOtherVersions: true}
-	if existing, err := runtimeFromProfile(parsed.Profile); err == nil {
+	current := runtimeFlags{Profile: selectedProfile, Compression: defaultCompression, DeleteOtherVersions: true}
+	if existing, err := runtimeFromProfile(selectedProfile); err == nil {
 		current = *existing
 	}
 
@@ -310,13 +330,6 @@ func runSetup(args []string) error {
 			break
 		}
 	}
-
-	reader := bufio.NewReader(os.Stdin)
-	stdinInfo, err := os.Stdin.Stat()
-	if err != nil {
-		return err
-	}
-	isTTY := stdinInfo.Mode()&os.ModeCharDevice != 0
 
 	if !hasConfigFlag {
 		if !isTTY {
@@ -394,12 +407,62 @@ func runSetup(args []string) error {
 		UsePathStyle:        current.UsePathStyle,
 		DeleteOtherVersions: current.DeleteOtherVersions,
 	}
-	if err := profiles.Save(parsed.Profile, p); err != nil {
+	if err := profiles.Save(selectedProfile, p); err != nil {
 		return err
 	}
 
-	fmt.Printf("Saved profile %q\n", parsed.Profile)
+	fmt.Printf("Saved profile %q\n", selectedProfile)
 	return nil
+}
+
+func selectProfileForSetup(reader *bufio.Reader, writer io.Writer) (string, error) {
+	items, err := profiles.List()
+	if err != nil {
+		return "", err
+	}
+	if len(items) == 0 {
+		fmt.Fprintln(writer, "No existing profiles found. Creating a new profile.")
+		return promptProfileSlug(reader, writer)
+	}
+
+	for {
+		fmt.Fprintln(writer, "Select a profile for setup:")
+		fmt.Fprintln(writer, "  1) Add new profile")
+		for i, slug := range items {
+			fmt.Fprintf(writer, "  %d) Edit %s\n", i+2, slug)
+		}
+		choice, err := prompt(reader, writer, "Choice", "1", true)
+		if err != nil {
+			return "", err
+		}
+		n, err := strconv.Atoi(choice)
+		if err != nil {
+			fmt.Fprintf(writer, "Invalid choice %q. Enter a number.\n", choice)
+			continue
+		}
+		if n == 1 {
+			return promptProfileSlug(reader, writer)
+		}
+		index := n - 2
+		if index >= 0 && index < len(items) {
+			return items[index], nil
+		}
+		fmt.Fprintf(writer, "Invalid choice %d. Enter a number between 1 and %d.\n", n, len(items)+1)
+	}
+}
+
+func promptProfileSlug(reader *bufio.Reader, writer io.Writer) (string, error) {
+	for {
+		slug, err := prompt(reader, writer, "Profile slug", "", true)
+		if err != nil {
+			return "", err
+		}
+		if err := profiles.ValidateSlug(slug); err != nil {
+			fmt.Fprintf(writer, "%v\n", err)
+			continue
+		}
+		return slug, nil
+	}
 }
 
 func runProfile(args []string) error {
@@ -484,12 +547,15 @@ func runProfileDelete(args []string) error {
 func printUsage(w io.Writer) {
 	fmt.Fprintln(w, "Usage:")
 	fmt.Fprintln(w, "  s3-lfs [flags]")
-	fmt.Fprintln(w, "  s3-lfs setup --profile <slug> [flags]")
+	fmt.Fprintln(w, "  s3-lfs setup [--profile <slug>] [flags]")
 	fmt.Fprintln(w, "  s3-lfs profile list")
 	fmt.Fprintln(w, "  s3-lfs profile show --profile <slug>")
 	fmt.Fprintln(w, "  s3-lfs profile delete --profile <slug>")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Without a subcommand, s3-lfs runs as a Git LFS custom transfer agent.")
+	fmt.Fprintln(w, "Setup is interactive:")
+	fmt.Fprintln(w, "  - s3-lfs setup: choose existing profile to edit or add a new profile")
+	fmt.Fprintln(w, "  - s3-lfs setup --profile <slug>: edit/create a specific profile")
 	fmt.Fprintln(w)
 	fmt.Fprintln(w, "Transfer-agent/setup flags:")
 	flags := runtimeFlags{Compression: defaultCompression, DeleteOtherVersions: true}

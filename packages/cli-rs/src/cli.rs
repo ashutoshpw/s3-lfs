@@ -11,6 +11,7 @@ use crate::profiles::{
 };
 use crate::repo_config::{apply_repo_overrides, resolve_repo_config};
 use crate::service;
+use crate::usage::print_usage;
 
 const CONFIG_FLAGS: [&str; 9] = [
     "access_key_id",
@@ -37,13 +38,19 @@ struct Cli {
 
 #[derive(Subcommand, Debug)]
 enum Commands {
+    #[command(
+        about = "Create or edit S3 profiles. Without --profile, opens interactive profile selection."
+    )]
     Setup(SetupArgs),
     Profile(ProfileArgs),
 }
 
 #[derive(Args, Clone, Debug, Default)]
 struct TransferArgs {
-    #[arg(long = "profile")]
+    #[arg(
+        long = "profile",
+        help = "Profile slug. In `setup`, omit to choose/edit profiles interactively."
+    )]
     profile: Option<String>,
     #[arg(long = "access_key_id")]
     access_key_id: Option<String>,
@@ -161,15 +168,25 @@ fn run_transfer_agent(parsed: &TransferArgs, raw_args: &[String]) -> Result<()> 
 }
 
 fn run_setup(parsed: &TransferArgs, raw_args: &[String]) -> Result<()> {
-    let slug = parsed
-        .profile
-        .as_ref()
-        .ok_or_else(|| anyhow!("--profile is required"))?;
-    validate_slug(slug)?;
+    let is_tty = io::stdin().is_terminal();
+    let slug = match parsed.profile.as_deref() {
+        Some(slug) => {
+            validate_slug(slug)?;
+            slug.to_string()
+        }
+        None => {
+            if !is_tty {
+                return Err(anyhow!(
+                    "--profile is required when stdin is not a terminal"
+                ));
+            }
+            select_profile_for_setup()?
+        }
+    };
 
-    let mut current = match load(slug) {
-        Ok(profile) => runtime_from_profile_obj(slug, &profile),
-        Err(err) if err.kind() == io::ErrorKind::NotFound => RuntimeConfig::with_profile(slug),
+    let mut current = match load(&slug) {
+        Ok(profile) => runtime_from_profile_obj(&slug, &profile),
+        Err(err) if err.kind() == io::ErrorKind::NotFound => RuntimeConfig::with_profile(&slug),
         Err(err) => return Err(err.into()),
     };
 
@@ -177,7 +194,6 @@ fn run_setup(parsed: &TransferArgs, raw_args: &[String]) -> Result<()> {
 
     let explicit = explicit_flags(raw_args);
     let has_config_flag = CONFIG_FLAGS.iter().any(|name| explicit.contains(*name));
-    let is_tty = io::stdin().is_terminal();
 
     if !has_config_flag {
         if !is_tty {
@@ -226,10 +242,60 @@ fn run_setup(parsed: &TransferArgs, raw_args: &[String]) -> Result<()> {
     }
 
     current.validate()?;
-    save(slug, &profile_from_runtime(&current))?;
+    save(&slug, &profile_from_runtime(&current))?;
     println!("Saved profile \"{}\"", slug);
 
     Ok(())
+}
+
+fn select_profile_for_setup() -> Result<String> {
+    let profiles = list()?;
+    if profiles.is_empty() {
+        println!("No existing profiles found. Creating a new profile.");
+        return prompt_profile_slug();
+    }
+
+    loop {
+        println!("Select a profile for setup:");
+        println!("  1) Add new profile");
+        for (index, slug) in profiles.iter().enumerate() {
+            println!("  {}) Edit {}", index + 2, slug);
+        }
+
+        let choice = prompt("Choice", "1", true)?;
+        let selection = match choice.parse::<usize>() {
+            Ok(value) => value,
+            Err(_) => {
+                println!("Invalid choice \"{}\". Enter a number.", choice);
+                continue;
+            }
+        };
+
+        if selection == 1 {
+            return prompt_profile_slug();
+        }
+
+        let profile_index = selection.saturating_sub(2);
+        if profile_index < profiles.len() {
+            return Ok(profiles[profile_index].clone());
+        }
+
+        println!(
+            "Invalid choice {}. Enter a number between 1 and {}.",
+            selection,
+            profiles.len() + 1
+        );
+    }
+}
+
+fn prompt_profile_slug() -> Result<String> {
+    loop {
+        let slug = prompt("Profile slug", "", true)?;
+        match validate_slug(&slug) {
+            Ok(_) => return Ok(slug),
+            Err(err) => println!("{}", err),
+        }
+    }
 }
 
 fn run_profile(parsed: ProfileArgs) -> Result<()> {
@@ -421,57 +487,4 @@ fn prompt_bool(label: &str, current: bool) -> Result<bool> {
             _ => println!("Please enter y or n."),
         }
     }
-}
-
-fn print_usage(writer: &mut dyn Write) -> io::Result<()> {
-    writeln!(writer, "Usage:")?;
-    writeln!(writer, "  s3-lfs [flags]")?;
-    writeln!(writer, "  s3-lfs setup --profile <slug> [flags]")?;
-    writeln!(writer, "  s3-lfs profile list")?;
-    writeln!(writer, "  s3-lfs profile show --profile <slug>")?;
-    writeln!(writer, "  s3-lfs profile delete --profile <slug>")?;
-    writeln!(writer)?;
-    writeln!(
-        writer,
-        "Without a subcommand, s3-lfs runs as a Git LFS custom transfer agent."
-    )?;
-    writeln!(writer)?;
-    writeln!(writer, "Transfer-agent/setup flags:")?;
-    writeln!(
-        writer,
-        "  --profile string                 Named profile slug from ~/.config/s3-lfs/profiles/<slug>/credentials.json"
-    )?;
-    writeln!(
-        writer,
-        "  --access_key_id string           S3 access key ID"
-    )?;
-    writeln!(
-        writer,
-        "  --secret_access_key string       S3 secret access key"
-    )?;
-    writeln!(writer, "  --bucket string                  S3 bucket")?;
-    writeln!(writer, "  --endpoint string                S3 endpoint")?;
-    writeln!(writer, "  --region string                  S3 region")?;
-    writeln!(
-        writer,
-        "  --root_path string               Path inside bucket to store LFS objects"
-    )?;
-    writeln!(
-        writer,
-        "  --use_path_style[=true|false]    Use path-style S3 URLs (default: false)"
-    )?;
-    writeln!(
-        writer,
-        "  --delete_other_versions[=true|false] Delete alternate compression variants (default: true)"
-    )?;
-    writeln!(
-        writer,
-        "  --compression string             Compression: zstd, gzip, none (default: none)"
-    )?;
-    writeln!(writer)?;
-    writeln!(writer, "Profile commands:")?;
-    writeln!(writer, "  list:   list configured profiles")?;
-    writeln!(writer, "  show:   print profile JSON")?;
-    writeln!(writer, "  delete: delete a profile directory")?;
-    Ok(())
 }

@@ -1,6 +1,7 @@
 # s3-lfs (npm)
 
 This package installs the `s3-lfs` executable and exposes it on your PATH.
+It also provides `s3lfs` as an alias.
 
 ## Install
 
@@ -30,6 +31,7 @@ npm install -g s3-lfs
 
 ```bash
 s3-lfs --help
+s3lfs --help
 ```
 
 ## Issues

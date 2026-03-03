@@ -35,10 +35,14 @@ npm install -g s3-lfs
 ### 1. Create a profile
 
 ```sh
-s3-lfs setup --profile my-profile
+s3-lfs setup
 ```
 
-This launches an interactive prompt for your S3 credentials. You can also pass them directly:
+This launches interactive setup:
+- if profiles exist, choose one to edit or add a new profile
+- if no profiles exist, create a new profile
+
+You can also target a profile directly and pass values as flags:
 
 ```sh
 s3-lfs setup --profile my-profile \

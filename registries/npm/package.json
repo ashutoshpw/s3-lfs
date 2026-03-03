@@ -1,11 +1,12 @@
 {
   "name": "s3-lfs",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "description": "npm wrapper for the s3-lfs executable",
   "license": "MIT",
   "type": "commonjs",
   "bin": {
-    "s3-lfs": "./bin/s3-lfs.js"
+    "s3-lfs": "./bin/s3-lfs.js",
+    "s3lfs": "./bin/s3-lfs.js"
   },
   "files": [
     "bin/",
