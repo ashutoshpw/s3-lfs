@@ -1,6 +1,6 @@
 {
   "name": "s3-lfs",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "npm wrapper for the s3-lfs executable",
   "license": "MIT",
   "type": "commonjs",
@@ -14,7 +14,11 @@
     "README.md"
   ],
   "scripts": {
-    "postinstall": "node ./scripts/postinstall.js"
+    "postinstall": "node ./scripts/postinstall.js",
+    "pack": "npm pack",
+    "pack:tgz": "npm pack",
+    "unpack:tgz": "node ./scripts/unpack-tgz.js",
+    "publish:tgz": "node ./scripts/publish-tgz.js"
   },
   "repository": {
     "type": "git",

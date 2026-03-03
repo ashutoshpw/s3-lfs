@@ -8,11 +8,24 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
+    timeout-minutes: 30
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout
+      uses: actions/checkout@v4
 
-    - name: Run test
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: "1.23"
+
+    - name: Ensure Docker daemon is available
+      run: |
+        if ! docker info > /dev/null 2>&1; then
+          sudo systemctl start docker || true
+        fi
+        docker info
+
+    - name: Run integration test
       run: ./scripts/run_test.sh
