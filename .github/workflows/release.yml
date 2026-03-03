@@ -11,23 +11,36 @@ permissions:
 
 jobs:
   build-go:
-    name: Build Go (${{ matrix.label }})
+    name: Build Go (${{ matrix.suffix }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
-            label: linux
             suffix: linux-amd64
+            goos: linux
+            goarch: amd64
+            ext: ""
+          - os: ubuntu-latest
+            suffix: linux-arm64
+            goos: linux
+            goarch: arm64
             ext: ""
           - os: macos-latest
-            label: macos
             suffix: macos-amd64
+            goos: darwin
+            goarch: amd64
+            ext: ""
+          - os: macos-latest
+            suffix: macos-arm64
+            goos: darwin
+            goarch: arm64
             ext: ""
           - os: windows-latest
-            label: windows
             suffix: windows-amd64
+            goos: windows
+            goarch: amd64
             ext: ".exe"
 
     steps:
@@ -62,7 +75,8 @@ jobs:
           fi
 
           echo "Building Go entrypoint: ${GO_ENTRY}"
-          go build -trimpath -ldflags "-s -w" -o "${GO_OUT}" "${GO_ENTRY}"
+          GOOS="${{ matrix.goos }}" GOARCH="${{ matrix.goarch }}" CGO_ENABLED=0 \
+            go build -trimpath -ldflags "-s -w" -o "${GO_OUT}" "${GO_ENTRY}"
 
       - name: Upload Go artifacts
         uses: actions/upload-artifact@v4
@@ -72,23 +86,31 @@ jobs:
           if-no-files-found: error
 
   build-rust:
-    name: Build Rust (${{ matrix.label }})
+    name: Build Rust (${{ matrix.suffix }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: ubuntu-latest
-            label: linux
             suffix: linux-amd64
+            rust_target: x86_64-unknown-linux-gnu
+            ext: ""
+          - os: ubuntu-latest
+            suffix: linux-arm64
+            rust_target: aarch64-unknown-linux-gnu
             ext: ""
           - os: macos-latest
-            label: macos
             suffix: macos-amd64
+            rust_target: x86_64-apple-darwin
+            ext: ""
+          - os: macos-latest
+            suffix: macos-arm64
+            rust_target: aarch64-apple-darwin
             ext: ""
           - os: windows-latest
-            label: windows
             suffix: windows-amd64
+            rust_target: x86_64-pc-windows-msvc
             ext: ".exe"
 
     steps:
@@ -98,6 +120,15 @@ jobs:
       - name: Setup Rust
         uses: dtolnay/rust-toolchain@stable
 
+      - name: Add Rust target
+        run: rustup target add ${{ matrix.rust_target }}
+
+      - name: Install Linux arm64 linker
+        if: matrix.rust_target == 'aarch64-unknown-linux-gnu'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc-aarch64-linux-gnu
+
       - name: Build Rust binary
         shell: bash
         run: |
@@ -105,8 +136,12 @@ jobs:
           mkdir -p dist
 
           RUST_OUT="dist/s3-lfs-rs-${{ matrix.suffix }}${{ matrix.ext }}"
-          cargo build --release --manifest-path ./packages/cli-rs/Cargo.toml
-          cp "./packages/cli-rs/target/release/s3-lfs${{ matrix.ext }}" "${RUST_OUT}"
+          if [ "${{ matrix.rust_target }}" = "aarch64-unknown-linux-gnu" ]; then
+            export CARGO_TARGET_AARCH64_UNKNOWN_LINUX_GNU_LINKER=aarch64-linux-gnu-gcc
+          fi
+
+          cargo build --release --target "${{ matrix.rust_target }}" --manifest-path ./packages/cli-rs/Cargo.toml
+          cp "./packages/cli-rs/target/${{ matrix.rust_target }}/release/s3-lfs${{ matrix.ext }}" "${RUST_OUT}"
 
       - name: Upload Rust artifacts
         uses: actions/upload-artifact@v4

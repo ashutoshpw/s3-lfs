@@ -41,6 +41,8 @@ const archName = (() => {
   switch (process.arch) {
     case "x64":
       return "amd64";
+    case "arm64":
+      return "arm64";
     default:
       return null;
   }
@@ -48,7 +50,7 @@ const archName = (() => {
 
 if (!archName) {
   console.error(
-    `[s3-lfs] unsupported architecture: ${process.arch}; available release assets are amd64 only`
+    `[s3-lfs] unsupported architecture: ${process.arch}; available release assets are amd64 and arm64`
   );
   process.exit(1);
 }

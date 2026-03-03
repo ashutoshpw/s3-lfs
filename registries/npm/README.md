@@ -13,11 +13,11 @@ npm install -g s3-lfs
 - `postinstall` downloads the latest release asset from GitHub.
 - Default asset flavor: Rust (`rs`)
 - Asset naming convention:
-  - Linux: `s3-lfs-rs-linux-amd64`
-  - macOS: `s3-lfs-rs-macos-amd64`
+  - Linux: `s3-lfs-rs-linux-amd64`, `s3-lfs-rs-linux-arm64`
+  - macOS: `s3-lfs-rs-macos-amd64`, `s3-lfs-rs-macos-arm64`
   - Windows: `s3-lfs-rs-windows-amd64.exe`
 - Binary is stored under `vendor/` and executed via `bin/s3-lfs.js`.
-- Current package supports `amd64` release assets only.
+- Current package supports `amd64` and `arm64` where release assets are available.
 
 ## Overrides
 
