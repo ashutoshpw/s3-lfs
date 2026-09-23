@@ -9,6 +9,16 @@ It also provides `s3lfs` as an alias.
 npm install -g s3-lfs
 ```
 
+## After install (required)
+
+Run setup to create or edit an S3 profile before configuring Git LFS:
+
+```bash
+s3-lfs setup
+# or
+s3lfs setup
+```
+
 ## What happens on install
 
 - `postinstall` downloads the latest release asset from GitHub.
