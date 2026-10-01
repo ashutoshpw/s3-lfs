@@ -6,7 +6,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.41
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.69.0
 	github.com/aws/smithy-go v1.24.2
-	github.com/klauspost/compress v1.17.11
+	github.com/klauspost/compress v1.20.1
 )
 
 require (
@@ -26,4 +26,4 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sts v1.33.1 // indirect
 )
 
-go 1.24
+go 1.25
