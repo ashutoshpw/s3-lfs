@@ -1,11 +1,11 @@
 module github.com/ashutoshpw/s3-lfs
 
 require (
-	github.com/aws/aws-sdk-go-v2 v1.32.5
+	github.com/aws/aws-sdk-go-v2 v1.47.1
 	github.com/aws/aws-sdk-go-v2/config v1.28.5
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.17.41
 	github.com/aws/aws-sdk-go-v2/service/s3 v1.69.0
-	github.com/aws/smithy-go v1.24.2
+	github.com/aws/smithy-go v1.28.1
 	github.com/klauspost/compress v1.17.11
 )
 
